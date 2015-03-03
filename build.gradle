@@ -1,0 +1,58 @@
+plugins {
+  id 'com.github.ben-manes.versions' version '0.8'
+  id 'idea'
+  id 'wrapper'
+}
+
+ext {
+  gitVersion = new ByteArrayOutputStream().with { out ->
+    exec {
+      commandLine 'git', 'describe', '--tags', '--dirty'
+      standardOutput = out
+    }
+
+    final full = out.toString().trim()
+
+    // 'v1.0' -> '1.0', 'vendetta' -> 'vendetta'
+    full ==~ /v\d.*/ ? full.substring(1) : full
+  }
+}
+
+idea.project.ipr {
+  withXml {
+    def compilerConfig = it.asNode().component.find { it.'@name' == 'CompilerConfiguration' }
+    compilerConfig.annotationProcessing[0].'@enabled' = 'true'
+  }
+}
+
+allprojects {
+  apply plugin: 'java'
+
+  group = 'help.joker'
+  version = rootProject.ext.gitVersion
+
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+
+  repositories {
+    jcenter()
+  }
+
+  configurations {
+    provided
+    compile.extendsFrom provided
+  }
+
+  dependencies {
+    provided 'org.projectlombok:lombok:1.16.2'
+    testCompile 'junit:junit:4.11'
+  }
+
+  sourceSets.main.compileClasspath += [configurations.provided]
+
+  idea.module {
+    downloadJavadoc = true
+    downloadSources = true
+    scopes.PROVIDED.plus += [configurations.provided]
+  }
+}
